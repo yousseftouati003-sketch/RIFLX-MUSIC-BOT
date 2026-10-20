@@ -15,6 +15,11 @@ export const COMMANDS = [
     default_member_permissions: EVERYONE,
   },
   {
+    name: 'diag',
+    description: 'Affiche le diagnostic des commandes enregistrées.',
+    default_member_permissions: EVERYONE,
+  },
+  {
     name: 'play',
     description: 'Joue une musique (YouTube) dans ton salon vocal.',
     default_member_permissions: EVERYONE,
