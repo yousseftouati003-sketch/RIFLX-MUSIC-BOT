@@ -45,19 +45,24 @@ export const COMMANDS = [
  */
 export async function registerCommands(clientId, token, guildId = '') {
   const rest = new REST({ version: '10' }).setToken(token);
-  const body = COMMANDS;
-  const route = guildId
-    ? Routes.applicationGuildCommands(clientId, guildId)
-    : Routes.applicationCommands(clientId);
 
-  await rest.put(route, { body });
+  const fmt = (list) =>
+    list
+      .map((c) => `${c.name}(${(c.options || []).map((o) => o.name).join(',')})`)
+      .join(', ') || 'EMPTY';
 
-  // Read back what Discord actually saved — proves the options are there.
-  const saved = await rest.get(route);
-  const summary = saved
-    .map((c) => `${c.name}(${(c.options || []).map((o) => o.name).join(',')})`)
-    .join(', ');
-  console.log(`✅ Registered ${saved.length} commands: ${summary}`);
+  // 1) ALWAYS sync GLOBAL commands — wipes any stale definitions
+  //    (e.g. old play(query)/volume(amount) registered by a previous setup).
+  await rest.put(Routes.applicationCommands(clientId), { body: COMMANDS });
+  const globalSaved = await rest.get(Routes.applicationCommands(clientId));
+  console.log(`✅ Global commands: ${fmt(globalSaved)}`);
+
+  // 2) Sync GUILD commands too (instant effect in that server).
+  if (guildId) {
+    await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: COMMANDS });
+    const saved = await rest.get(Routes.applicationGuildCommands(clientId, guildId));
+    console.log(`✅ Guild commands (${guildId}): ${fmt(saved)}`);
+  }
 }
 
 // Allows `npm run deploy-commands` from the terminal.
