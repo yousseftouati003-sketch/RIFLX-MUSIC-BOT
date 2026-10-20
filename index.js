@@ -38,10 +38,10 @@ const THEME = {
 
 const baseEmbed = () => new EmbedBuilder().setColor(THEME.color).setTimestamp();
 
-const embedNowPlaying = (track, user) =>
+const embedNowPlaying = (track, user, diag = '') =>
   baseEmbed()
     .setTitle('🎵 Now Playing')
-    .setDescription(`**${track}**`)
+    .setDescription(`**${track}**${diag ? `\n\n\`\`\`diff\n${diag}\n\`\`\`` : ''}`)
     .setImage(THEME.gifPlay)
     .setAuthor({ name: `Demandé par ${user.tag || user.username || user}` })
     .setFooter({ text: THEME.footer });
@@ -98,8 +98,31 @@ const client = new Client({
 const player = new Player(client);
 
 // --- voice/runtime diagnostics ---------------------------------------------
-process.on('unhandledRejection', (e) => console.error('UNHANDLED REJECTION:', e));
-process.on('uncaughtException', (e) => console.error('UNCAUGHT EXCEPTION:', e));
+let opusEncoder = 'opusscript';
+const lastErrors = [];
+const pushError = (tag, e) => {
+  const msg = String(e?.message || e).slice(0, 200);
+  lastErrors.unshift(`${tag}: ${msg}`);
+  if (lastErrors.length > 4) lastErrors.pop();
+};
+
+process.on('unhandledRejection', (e) => { console.error('UNHANDLED REJECTION:', e); pushError('unhandled', e); });
+process.on('uncaughtException', (e) => { console.error('UNCAUGHT EXCEPTION:', e); pushError('uncaught', e); });
+
+const VOICE_STATUS = ['Connecting', 'Waiting', 'Signalling', 'Ready', 'Destroyed'];
+
+async function voiceDiag(queue, channel) {
+  const perms = channel?.permissionsFor?.(client.user);
+  const status = queue?.connection?.state?.status;
+  const lines = [
+    `Connexion: ${status === 3 ? '✅ Ready' : `⚠️ ${VOICE_STATUS[status] ?? 'unknown'}`}`,
+    `Permissions: ${perms ? `${perms.has('Connect') ? '✅' : '❌'} Connect · ${perms.has('Speak') ? '✅' : '❌'} Speak` : 'n/a'}`,
+    `Encoder: ${opusEncoder}`,
+    `Canal: ${channel?.name ?? 'n/a'}${channel?.bitrate ? ` • ${Math.round(channel.bitrate / 1000)}kbps` : ''}`,
+    `Erreurs: ${lastErrors.length ? lastErrors.join(' | ') : 'aucune'}`
+  ];
+  return lines.join('\n');
+}
 
 client.on('voiceStateUpdate', (oldState, newState) => {
   if (newState.id === client.user?.id) {
@@ -131,7 +154,11 @@ async function playSong(voiceChannel, song, textChannel, user) {
     ` | playing: ${queue?.isPlaying() ?? 'n/a'}`
   );
 
-  return result?.track?.title || song;
+  // Let the stream settle, then snapshot the voice state for the embed.
+  await new Promise((r) => setTimeout(r, 4000));
+  const diag = await voiceDiag(queue, queue?.channel ?? voiceChannel);
+
+  return { title: result?.track?.title || song, diag };
 }
 
 // --- diagnostics -----------------------------------------------------------
@@ -177,8 +204,8 @@ client.once('clientReady', async () => {
 
   // Which Opus encoder is active (native = clearer audio)?
   import('@discordjs/opus')
-    .then(() => console.log('🎧 Opus encoder: native @discordjs/opus'))
-    .catch(() => console.log('🎧 Opus encoder: opusscript (JS fallback)'));
+    .then(() => { opusEncoder = 'native @discordjs/opus'; console.log('🎧 Opus encoder: native @discordjs/opus'); })
+    .catch(() => { opusEncoder = 'opusscript (JS)'; console.log('🎧 Opus encoder: opusscript (JS fallback)'); });
 
   try {
     await player.extractors.register(YoutubeExtractor);
@@ -203,10 +230,12 @@ player.events.on('playerStart', (queue, track) => {
 // Show track and playback errors.
 player.events.on('playerError', (queue, error) => {
   console.error('PLAYER ERROR:', error);
+  pushError('playerError', error);
 });
 
 player.events.on('error', (queue, error) => {
   console.error('QUEUE ERROR:', error);
+  pushError('queueError', error);
 });
 
 // --- slash commands --------------------------------------------------------
@@ -250,9 +279,9 @@ client.on('interactionCreate', async (interaction) => {
       console.log('YouTube search:', song);
       await interaction.editReply({ embeds: [embedSearching(song)] });
 
-      const trackTitle = await playSong(voiceChannel, song, interaction.channel, interaction.user);
+      const { title: trackTitle, diag } = await playSong(voiceChannel, song, interaction.channel, interaction.user);
 
-      await interaction.editReply({ embeds: [embedNowPlaying(trackTitle, interaction.user)] });
+      await interaction.editReply({ embeds: [embedNowPlaying(trackTitle, interaction.user, diag)] });
 
       console.log('Playback request completed.');
       return;
@@ -310,8 +339,8 @@ client.on('messageCreate', async (message) => {
         }
         const msg = await message.reply({ embeds: [embedSearching(args)] });
         console.log('YouTube search:', args);
-        const trackTitle = await playSong(voiceChannel, args, message.channel, message.author);
-        await msg.edit({ embeds: [embedNowPlaying(trackTitle, message.author)] });
+        const { title: trackTitle, diag } = await playSong(voiceChannel, args, message.channel, message.author);
+        await msg.edit({ embeds: [embedNowPlaying(trackTitle, message.author, diag)] });
         console.log('Playback request completed.');
         return;
       }
