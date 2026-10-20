@@ -134,29 +134,51 @@ client.on('voiceStateUpdate', (oldState, newState) => {
 
 // --- shared playback helper ------------------------------------------------
 async function playSong(voiceChannel, song, textChannel, user) {
-  const result = await player.play(voiceChannel, song, {
-    nodeOptions: {
-      metadata: {
-        channel: textChannel,
-        requestedBy: user
-      },
-      leaveOnEmpty: true,
-      leaveOnEnd: false,
-      leaveOnStop: true,
-      selfDeaf: true
-    }
-  });
+  const startTrack = (target) =>
+    player.play(voiceChannel, target, {
+      nodeOptions: {
+        metadata: {
+          channel: textChannel,
+          requestedBy: user
+        },
+        leaveOnEmpty: true,
+        leaveOnEnd: false,
+        leaveOnStop: true,
+        selfDeaf: true
+      }
+    });
+
+  let result;
+  let source = 'YouTube';
+
+  try {
+    result = await startTrack(song);
+  } catch (error) {
+    const msg = String(error?.message || error);
+    if (!/extract stream|could not/i.test(msg)) throw error;
+
+    // YouTube blocked the server IP -> automatic SoundCloud fallback.
+    console.log('[FALLBACK] YouTube stream failed -> trying SoundCloud...');
+    pushError('youtube-blocked', error);
+
+    const search = await player.search(song, { searchEngine: 'soundCloudSearch' }).catch(() => null);
+    if (!search || search.isEmpty()) throw error;
+
+    result = await startTrack(search.tracks[0]);
+    source = 'SoundCloud (YouTube bloqué)';
+  }
 
   const queue = result?.queue;
   console.log(
     `[VOICE] connection status: ${queue?.connection?.state?.status ?? 'n/a'}` +
     ` | channel: ${queue?.channel?.name ?? 'n/a'}` +
-    ` | playing: ${queue?.isPlaying() ?? 'n/a'}`
+    ` | playing: ${queue?.isPlaying() ?? 'n/a'}` +
+    ` | source: ${source}`
   );
 
   // Let the stream settle, then snapshot the voice state for the embed.
   await new Promise((r) => setTimeout(r, 4000));
-  const diag = await voiceDiag(queue, queue?.channel ?? voiceChannel);
+  const diag = `Source: ${source}\n` + (await voiceDiag(queue, queue?.channel ?? voiceChannel));
 
   return { title: result?.track?.title || song, diag };
 }
@@ -206,6 +228,15 @@ client.once('clientReady', async () => {
   import('@discordjs/opus')
     .then(() => { opusEncoder = 'native @discordjs/opus'; console.log('🎧 Opus encoder: native @discordjs/opus'); })
     .catch(() => { opusEncoder = 'opusscript (JS)'; console.log('🎧 Opus encoder: opusscript (JS fallback)'); });
+
+  // Register built-in extractors (SoundCloud, Vimeo, ...) — used as fallback
+  // when YouTube blocks the server's IP.
+  try {
+    await player.extractors.loadDefault();
+    console.log('Default extractors registered (SoundCloud fallback ready).');
+  } catch (error) {
+    console.error('Default extractors error:', error.message || error);
+  }
 
   try {
     await player.extractors.register(YoutubeExtractor);
