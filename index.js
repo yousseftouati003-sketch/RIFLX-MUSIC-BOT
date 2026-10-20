@@ -32,6 +32,7 @@ const THEME = {
   gifPlay: 'https://media.tenor.com/YITCS1cb0uIAAAAM/hollow-purple-hollow.gif',
   gifSearch: 'https://media.tenor.com/8UntVSgyu6QAAAAM/gojo-satoru-satoru-gojo.gif',
   gifStop: 'https://media.tenor.com/hMd8cHEyjvgAAAAM/gojo.gif',
+  gifExtra: 'https://media.tenor.com/uC2DREfKavIAAAAM/gojo-satoru.gif',
   footer: 'RIFLX MUSIC BOT'
 };
 
@@ -63,7 +64,7 @@ const embedError = (details) =>
     .setColor(0xed4245)
     .setTitle('❌ Erreur de lecture')
     .setDescription(String(details).slice(0, 1000))
-    .setThumbnail(THEME.gifStop)
+    .setThumbnail(THEME.gifExtra)
     .setFooter({ text: THEME.footer });
 
 const embedUsage = () =>
@@ -73,14 +74,14 @@ const embedUsage = () =>
       'Utilise: `/play song:<titre ou lien YouTube>`\n' +
       '💡 Alternative qui marche à coup sûr: `!!play <titre ou lien>`'
     )
-    .setThumbnail(THEME.gifSearch)
+    .setThumbnail(THEME.gifExtra)
     .setFooter({ text: THEME.footer });
 
 const embedNoVoice = () =>
   baseEmbed()
     .setTitle('🔊 Salon vocal requis')
     .setDescription('Entre dans un salon vocal avant de lancer une musique.')
-    .setThumbnail(THEME.gifSearch)
+    .setThumbnail(THEME.gifExtra)
     .setFooter({ text: THEME.footer });
 
 // --- client ----------------------------------------------------------------
@@ -197,7 +198,7 @@ client.on('interactionCreate', async (interaction) => {
 
   try {
     if (interaction.commandName === 'test') {
-      return interaction.reply({ embeds: [baseEmbed().setTitle('✅ Fonctionne!').setFooter({ text: THEME.footer })] });
+      return interaction.reply({ embeds: [baseEmbed().setTitle('✅ Fonctionne!').setThumbnail(THEME.gifExtra).setFooter({ text: THEME.footer })] });
     }
 
     if (interaction.commandName === 'diag') {
@@ -264,7 +265,7 @@ client.on('messageCreate', async (message) => {
   try {
     switch (cmd.toLowerCase()) {
       case 'test':
-        await message.reply({ embeds: [baseEmbed().setTitle('✅ Fonctionne!').setFooter({ text: THEME.footer })] });
+        await message.reply({ embeds: [baseEmbed().setTitle('✅ Fonctionne!').setThumbnail(THEME.gifExtra).setFooter({ text: THEME.footer })] });
         return;
 
       case 'diag':
