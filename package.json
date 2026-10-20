@@ -23,5 +23,8 @@
     "googlevideo": "^4.0.0",
     "opusscript": "^0.1.1",
     "simple-ytdl-core": "1.1.1"
+  },
+  "optionalDependencies": {
+    "@discordjs/opus": "^0.10.0"
   }
 }

@@ -33,7 +33,7 @@ const THEME = {
   gifSearch: 'https://media.tenor.com/8UntVSgyu6QAAAAM/gojo-satoru-satoru-gojo.gif',
   gifStop: 'https://media.tenor.com/hMd8cHEyjvgAAAAM/gojo.gif',
   gifExtra: 'https://media.tenor.com/uC2DREfKavIAAAAM/gojo-satoru.gif',
-  footer: 'RIFLX MUSIC BOT'
+  footer: '✨ DEV BY RIFLX'
 };
 
 const baseEmbed = () => new EmbedBuilder().setColor(THEME.color).setTimestamp();
@@ -42,21 +42,22 @@ const embedNowPlaying = (track, user) =>
   baseEmbed()
     .setTitle('🎵 Now Playing')
     .setDescription(`**${track}**`)
-    .setThumbnail(THEME.gifPlay)
-    .setFooter({ text: `Demandé par ${user.tag || user.username || user} • ${THEME.footer}` });
+    .setImage(THEME.gifPlay)
+    .setAuthor({ name: `Demandé par ${user.tag || user.username || user}` })
+    .setFooter({ text: THEME.footer });
 
 const embedSearching = (query) =>
   baseEmbed()
     .setTitle('🔍 Recherche en cours...')
     .setDescription(`Recherche de **${query}** sur YouTube...`)
-    .setThumbnail(THEME.gifSearch)
+    .setImage(THEME.gifSearch)
     .setFooter({ text: THEME.footer });
 
 const embedStopped = () =>
   baseEmbed()
     .setTitle('⏹ Lecture arrêtée')
     .setDescription('La musique a été stoppée. **Domain Expansion** activé. 🟣')
-    .setThumbnail(THEME.gifStop)
+    .setImage(THEME.gifStop)
     .setFooter({ text: THEME.footer });
 
 const embedError = (details) =>
@@ -64,7 +65,7 @@ const embedError = (details) =>
     .setColor(0xed4245)
     .setTitle('❌ Erreur de lecture')
     .setDescription(String(details).slice(0, 1000))
-    .setThumbnail(THEME.gifExtra)
+    .setImage(THEME.gifExtra)
     .setFooter({ text: THEME.footer });
 
 const embedUsage = () =>
@@ -74,14 +75,14 @@ const embedUsage = () =>
       'Utilise: `/play song:<titre ou lien YouTube>`\n' +
       '💡 Alternative qui marche à coup sûr: `!!play <titre ou lien>`'
     )
-    .setThumbnail(THEME.gifExtra)
+    .setImage(THEME.gifExtra)
     .setFooter({ text: THEME.footer });
 
 const embedNoVoice = () =>
   baseEmbed()
     .setTitle('🔊 Salon vocal requis')
     .setDescription('Entre dans un salon vocal avant de lancer une musique.')
-    .setThumbnail(THEME.gifExtra)
+    .setImage(THEME.gifExtra)
     .setFooter({ text: THEME.footer });
 
 // --- client ----------------------------------------------------------------
@@ -198,7 +199,7 @@ client.on('interactionCreate', async (interaction) => {
 
   try {
     if (interaction.commandName === 'test') {
-      return interaction.reply({ embeds: [baseEmbed().setTitle('✅ Fonctionne!').setThumbnail(THEME.gifExtra).setFooter({ text: THEME.footer })] });
+      return interaction.reply({ embeds: [baseEmbed().setTitle('✅ Fonctionne!').setImage(THEME.gifExtra).setFooter({ text: THEME.footer })] });
     }
 
     if (interaction.commandName === 'diag') {
@@ -265,7 +266,7 @@ client.on('messageCreate', async (message) => {
   try {
     switch (cmd.toLowerCase()) {
       case 'test':
-        await message.reply({ embeds: [baseEmbed().setTitle('✅ Fonctionne!').setThumbnail(THEME.gifExtra).setFooter({ text: THEME.footer })] });
+        await message.reply({ embeds: [baseEmbed().setTitle('✅ Fonctionne!').setImage(THEME.gifExtra).setFooter({ text: THEME.footer })] });
         return;
 
       case 'diag':
