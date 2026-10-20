@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import path from 'node:path';
 
-import { Client, GatewayIntentBits, REST, Routes } from 'discord.js';
+import { Client, GatewayIntentBits, REST, Routes, EmbedBuilder } from 'discord.js';
 import { Player } from 'discord-player';
 import { YoutubeExtractor } from 'discord-player-youtubei';
 import ffmpegPath from 'ffmpeg-static';
@@ -26,6 +26,64 @@ process.env.PATH =
 
 const PREFIX = '!!';
 
+// --- Gojo Satoru theme -----------------------------------------------------
+const THEME = {
+  color: 0x8b5cf6, // Hollow Purple
+  gifPlay: 'https://media.tenor.com/YITCS1cb0uIAAAAM/hollow-purple-hollow.gif',
+  gifSearch: 'https://media.tenor.com/8UntVSgyu6QAAAAM/gojo-satoru-satoru-gojo.gif',
+  gifStop: 'https://media.tenor.com/hMd8cHEyjvgAAAAM/gojo.gif',
+  footer: 'RIFLX MUSIC BOT'
+};
+
+const baseEmbed = () => new EmbedBuilder().setColor(THEME.color).setTimestamp();
+
+const embedNowPlaying = (track, user) =>
+  baseEmbed()
+    .setTitle('🎵 Now Playing')
+    .setDescription(`**${track}**`)
+    .setThumbnail(THEME.gifPlay)
+    .setFooter({ text: `Demandé par ${user.tag || user.username || user} • ${THEME.footer}` });
+
+const embedSearching = (query) =>
+  baseEmbed()
+    .setTitle('🔍 Recherche en cours...')
+    .setDescription(`Recherche de **${query}** sur YouTube...`)
+    .setThumbnail(THEME.gifSearch)
+    .setFooter({ text: THEME.footer });
+
+const embedStopped = () =>
+  baseEmbed()
+    .setTitle('⏹ Lecture arrêtée')
+    .setDescription('La musique a été stoppée. **Domain Expansion** activé. 🟣')
+    .setThumbnail(THEME.gifStop)
+    .setFooter({ text: THEME.footer });
+
+const embedError = (details) =>
+  new EmbedBuilder()
+    .setColor(0xed4245)
+    .setTitle('❌ Erreur de lecture')
+    .setDescription(String(details).slice(0, 1000))
+    .setThumbnail(THEME.gifStop)
+    .setFooter({ text: THEME.footer });
+
+const embedUsage = () =>
+  baseEmbed()
+    .setTitle('⚠️ Commande incomplète')
+    .setDescription(
+      'Utilise: `/play song:<titre ou lien YouTube>`\n' +
+      '💡 Alternative qui marche à coup sûr: `!!play <titre ou lien>`'
+    )
+    .setThumbnail(THEME.gifSearch)
+    .setFooter({ text: THEME.footer });
+
+const embedNoVoice = () =>
+  baseEmbed()
+    .setTitle('🔊 Salon vocal requis')
+    .setDescription('Entre dans un salon vocal avant de lancer une musique.')
+    .setThumbnail(THEME.gifSearch)
+    .setFooter({ text: THEME.footer });
+
+// --- client ----------------------------------------------------------------
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -72,17 +130,22 @@ async function sendDiag(message) {
     .get(Routes.applicationCommands(app))
     .catch(() => null);
 
-  await message.reply(
-    '📋 **DIAG**\n' +
-    '```bf\n' +
-    `- Bot app ID : ${app}\n` +
-    `- Serveur    : ${message.guildId}\n` +
-    `- Node       : ${process.version}\n` +
-    `- Guild cmds : ${fmtCommands(guildCmds)}\n` +
-    `- Global cmds: ${fmtCommands(globalCmds)}\n` +
-    '```\n' +
-    'Colle-moi cette réponse exactement telle quelle.'
-  );
+  await message.reply({
+    embeds: [
+      baseEmbed()
+        .setTitle('📋 DIAG')
+        .setDescription(
+          '```bf\n' +
+          `- Bot app ID : ${app}\n` +
+          `- Serveur    : ${message.guildId}\n` +
+          `- Node       : ${process.version}\n` +
+          `- Guild cmds : ${fmtCommands(guildCmds)}\n` +
+          `- Global cmds: ${fmtCommands(globalCmds)}\n` +
+          '```'
+        )
+        .setFooter({ text: THEME.footer })
+    ]
+  });
 }
 
 // --- startup ---------------------------------------------------------------
@@ -134,7 +197,7 @@ client.on('interactionCreate', async (interaction) => {
 
   try {
     if (interaction.commandName === 'test') {
-      return interaction.reply('RIFLX MUSIC BOT fonctionne !');
+      return interaction.reply({ embeds: [baseEmbed().setTitle('✅ Fonctionne!').setFooter({ text: THEME.footer })] });
     }
 
     if (interaction.commandName === 'diag') {
@@ -146,30 +209,23 @@ client.on('interactionCreate', async (interaction) => {
       const voiceChannel = interaction.member.voice?.channel;
 
       if (!voiceChannel) {
-        return interaction.reply({
-          content: 'Entre dans un salon vocal avant de lancer une musique.',
-          ephemeral: true
-        });
+        return interaction.reply({ embeds: [embedNoVoice()], ephemeral: true });
       }
 
       const song = interaction.options.getString('song');
 
       if (!song) {
-        return interaction.reply({
-          content: '⚠️ Utilise: `/play song:<titre ou lien YouTube>` — le champ "song" est obligatoire.\n💡 Alternative qui marche à coup sûr: `!!play <titre ou lien>`',
-          ephemeral: true
-        });
+        return interaction.reply({ embeds: [embedUsage()], ephemeral: true });
       }
 
       await interaction.deferReply();
 
       console.log('YouTube search:', song);
+      await interaction.editReply({ embeds: [embedSearching(song)] });
+
       const trackTitle = await playSong(voiceChannel, song, interaction.channel, interaction.user);
 
-      await interaction.editReply(
-        `Demande envoyée : ${trackTitle}\n` +
-        `Si la musique ne démarre pas, vérifie les logs du bot.`
-      );
+      await interaction.editReply({ embeds: [embedNowPlaying(trackTitle, interaction.user)] });
 
       console.log('Playback request completed.');
       return;
@@ -179,28 +235,19 @@ client.on('interactionCreate', async (interaction) => {
       const queue = player.nodes.get(interaction.guildId);
 
       if (!queue) {
-        return interaction.reply({
-          content: 'Aucune musique en cours.',
-          ephemeral: true
-        });
+        return interaction.reply({ embeds: [baseEmbed().setTitle('ℹ️ Aucune musique en cours').setFooter({ text: THEME.footer })], ephemeral: true });
       }
 
       await queue.delete();
-      return interaction.reply('Lecture arrêtée.');
+      return interaction.reply({ embeds: [embedStopped()] });
     }
   } catch (error) {
     console.error('MUSIC ERROR:', error.stack || error);
 
-    const details = String(error.message || error).slice(0, 1000);
-    const response = `Erreur de lecture : ${details}`;
-
     if (interaction.deferred || interaction.replied) {
-      await interaction.editReply(response).catch(console.error);
+      await interaction.editReply({ embeds: [embedError(error.message || error)] }).catch(console.error);
     } else {
-      await interaction.reply({
-        content: response,
-        ephemeral: true
-      }).catch(console.error);
+      await interaction.reply({ embeds: [embedError(error.message || error)], ephemeral: true }).catch(console.error);
     }
   }
 });
@@ -217,7 +264,7 @@ client.on('messageCreate', async (message) => {
   try {
     switch (cmd.toLowerCase()) {
       case 'test':
-        await message.reply('RIFLX MUSIC BOT fonctionne !');
+        await message.reply({ embeds: [baseEmbed().setTitle('✅ Fonctionne!').setFooter({ text: THEME.footer })] });
         return;
 
       case 'diag':
@@ -226,18 +273,18 @@ client.on('messageCreate', async (message) => {
 
       case 'play': {
         if (!args) {
-          await message.reply(`⚠️ Utilise: \`${PREFIX}play <titre ou lien YouTube>\``);
+          await message.reply({ embeds: [embedUsage()] });
           return;
         }
         const voiceChannel = message.member?.voice?.channel;
         if (!voiceChannel) {
-          await message.reply('Entre dans un salon vocal avant de lancer une musique.');
+          await message.reply({ embeds: [embedNoVoice()] });
           return;
         }
-        const typing = await message.reply('🔍 Recherche en cours...');
+        const msg = await message.reply({ embeds: [embedSearching(args)] });
         console.log('YouTube search:', args);
         const trackTitle = await playSong(voiceChannel, args, message.channel, message.author);
-        await typing.edit(`🎵 Lecture: **${trackTitle}**`);
+        await msg.edit({ embeds: [embedNowPlaying(trackTitle, message.author)] });
         console.log('Playback request completed.');
         return;
       }
@@ -245,11 +292,11 @@ client.on('messageCreate', async (message) => {
       case 'stop': {
         const queue = player.nodes.get(message.guildId);
         if (!queue) {
-          await message.reply('Aucune musique en cours.');
+          await message.reply({ embeds: [baseEmbed().setTitle('ℹ️ Aucune musique en cours').setFooter({ text: THEME.footer })] });
           return;
         }
         await queue.delete();
-        await message.reply('Lecture arrêtée.');
+        await message.reply({ embeds: [embedStopped()] });
         return;
       }
 
@@ -258,7 +305,7 @@ client.on('messageCreate', async (message) => {
     }
   } catch (error) {
     console.error('MUSIC ERROR:', error.stack || error);
-    await message.reply(`Erreur de lecture : ${String(error.message || error).slice(0, 500)}`)
+    await message.reply({ embeds: [embedError(error.message || error)] })
       .catch(console.error);
   }
 });
