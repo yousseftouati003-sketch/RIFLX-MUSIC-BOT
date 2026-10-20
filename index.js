@@ -97,6 +97,18 @@ const client = new Client({
 
 const player = new Player(client);
 
+// --- voice/runtime diagnostics ---------------------------------------------
+process.on('unhandledRejection', (e) => console.error('UNHANDLED REJECTION:', e));
+process.on('uncaughtException', (e) => console.error('UNCAUGHT EXCEPTION:', e));
+
+client.on('voiceStateUpdate', (oldState, newState) => {
+  if (newState.id === client.user?.id) {
+    console.log(
+      `[VOICE] bot moved: ${oldState.channelId ?? 'spawn'} -> ${newState.channelId ?? 'disconnected'}`
+    );
+  }
+});
+
 // --- shared playback helper ------------------------------------------------
 async function playSong(voiceChannel, song, textChannel, user) {
   const result = await player.play(voiceChannel, song, {
@@ -111,6 +123,14 @@ async function playSong(voiceChannel, song, textChannel, user) {
       selfDeaf: true
     }
   });
+
+  const queue = result?.queue;
+  console.log(
+    `[VOICE] connection status: ${queue?.connection?.state?.status ?? 'n/a'}` +
+    ` | channel: ${queue?.channel?.name ?? 'n/a'}` +
+    ` | playing: ${queue?.isPlaying() ?? 'n/a'}`
+  );
+
   return result?.track?.title || song;
 }
 
@@ -154,6 +174,11 @@ async function sendDiag(message) {
 client.once('clientReady', async () => {
   console.log(`RIFLX MUSIC BOT online as ${client.user.tag}`);
   console.log('FFmpeg:', ffmpegPath);
+
+  // Which Opus encoder is active (native = clearer audio)?
+  import('@discordjs/opus')
+    .then(() => console.log('🎧 Opus encoder: native @discordjs/opus'))
+    .catch(() => console.log('🎧 Opus encoder: opusscript (JS fallback)'));
 
   try {
     await player.extractors.register(YoutubeExtractor);
