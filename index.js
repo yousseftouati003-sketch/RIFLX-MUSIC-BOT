@@ -29,7 +29,7 @@ const PREFIX = '!!';
 // --- Gojo Satoru theme -----------------------------------------------------
 const THEME = {
   color: 0x8b5cf6, // Hollow Purple
-  gifPlay: 'https://media.tenor.com/YITCS1cb0uIAAAAM/hollow-purple-hollow.gif',
+  gifPlay: 'https://media.tenor.com/zZOt7alSzAMAAAAM/gojo-gojo-satoru.gif',
   gifSearch: 'https://media.tenor.com/8UntVSgyu6QAAAAM/gojo-satoru-satoru-gojo.gif',
   gifStop: 'https://media.tenor.com/hMd8cHEyjvgAAAAM/gojo.gif',
   gifExtra: 'https://media.tenor.com/uC2DREfKavIAAAAM/gojo-satoru.gif',
