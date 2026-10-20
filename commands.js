@@ -41,14 +41,18 @@ export const COMMANDS = [
 export async function registerCommands(clientId, token, guildId = '') {
   const rest = new REST({ version: '10' }).setToken(token);
   const body = COMMANDS;
+  const route = guildId
+    ? Routes.applicationGuildCommands(clientId, guildId)
+    : Routes.applicationCommands(clientId);
 
-  if (guildId) {
-    await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body });
-    console.log(`✅ Registered ${body.length} guild slash commands (${guildId}).`);
-  } else {
-    await rest.put(Routes.applicationCommands(clientId), { body });
-    console.log(`✅ Registered ${body.length} global slash commands.`);
-  }
+  await rest.put(route, { body });
+
+  // Read back what Discord actually saved — proves the options are there.
+  const saved = await rest.get(route);
+  const summary = saved
+    .map((c) => `${c.name}(${(c.options || []).map((o) => o.name).join(',')})`)
+    .join(', ');
+  console.log(`✅ Registered ${saved.length} commands: ${summary}`);
 }
 
 // Allows `npm run deploy-commands` from the terminal.

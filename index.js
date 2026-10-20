@@ -69,6 +69,15 @@ player.events.on('error', (queue, error) => {
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
+  // Diagnostic: which app/command/options exactly did Discord send?
+  console.log(
+    `[CMD] name=${interaction.commandName}` +
+    ` app=${interaction.applicationId}` +
+    ` mine=${client.application?.id}` +
+    ` guild=${interaction.guildId}` +
+    ` options=${JSON.stringify(interaction.options.data)}`
+  );
+
   try {
     if (interaction.commandName === 'test') {
       return interaction.reply('RIFLX MUSIC BOT fonctionne !');
