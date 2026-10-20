@@ -84,7 +84,14 @@ client.on('interactionCreate', async (interaction) => {
         });
       }
 
-      const song = interaction.options.getString('song', true);
+      const song = interaction.options.getString('song');
+
+      if (!song) {
+        return interaction.reply({
+          content: '⚠️ Utilise: `/play song:<titre ou lien YouTube>` — le champ "song" est obligatoire.',
+          ephemeral: true
+        });
+      }
 
       await interaction.deferReply();
 
