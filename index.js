@@ -1,15 +1,12 @@
+import 'dotenv/config';
+import path from 'node:path';
 
-require('dotenv').config();
+import { Client, GatewayIntentBits } from 'discord.js';
+import { Player } from 'discord-player';
+import { YoutubeExtractor } from 'discord-player-youtubei';
+import ffmpegPath from 'ffmpeg-static';
 
-const {
-  Client,
-  GatewayIntentBits
-} = require('discord.js');
-
-const { Player } = require('discord-player');
-const { YoutubeExtractor } = require('discord-player-youtubei');
-const ffmpegPath = require('ffmpeg-static');
-const path = require('path');
+import { registerCommands } from './commands.js';
 
 if (!process.env.DISCORD_TOKEN) {
   console.error('ERROR: DISCORD_TOKEN is missing from .env');
@@ -35,8 +32,6 @@ const client = new Client({
 });
 
 const player = new Player(client);
-
-const { registerCommands } = require('./commands');
 
 client.once('clientReady', async () => {
   console.log(`RIFLX MUSIC BOT online as ${client.user.tag}`);

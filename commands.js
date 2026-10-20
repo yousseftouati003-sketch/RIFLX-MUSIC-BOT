@@ -1,11 +1,14 @@
 // Slash-command definitions + registration (auto-run when the bot starts).
-const { REST, Routes } = require('discord.js');
+import 'dotenv/config';
+import { pathToFileURL } from 'node:url';
+
+import { REST, Routes } from 'discord.js';
 
 // `default_member_permissions: null` = every member can use the command
 // (no permission required — @everyone included).
 const EVERYONE = null;
 
-const COMMANDS = [
+export const COMMANDS = [
   {
     name: 'test',
     description: 'Vérifie que le bot répond.',
@@ -35,7 +38,7 @@ const COMMANDS = [
  * Registers the slash commands.
  * With a guildId they appear instantly; without it they are global (up to 1h delay).
  */
-async function registerCommands(clientId, token, guildId = '') {
+export async function registerCommands(clientId, token, guildId = '') {
   const rest = new REST({ version: '10' }).setToken(token);
   const body = COMMANDS;
 
@@ -49,9 +52,10 @@ async function registerCommands(clientId, token, guildId = '') {
 }
 
 // Allows `npm run deploy-commands` from the terminal.
-if (require.main === module) {
-  require('dotenv').config();
+const isDirectRun =
+  process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 
+if (isDirectRun) {
   const token = (process.env.DISCORD_TOKEN || '').trim();
   const guildId = (process.env.GUILD_ID || '').trim();
 
@@ -74,5 +78,3 @@ if (require.main === module) {
       process.exit(1);
     });
 }
-
-module.exports = { COMMANDS, registerCommands };
