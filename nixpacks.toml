@@ -1,0 +1,5 @@
+# NixPACKS configuration (Railway)
+# youtubei.js (via discord-player-youtubei) is ESM-only and needs
+# Node >= 22.12 to be require()d from CommonJS.
+[phases.setup]
+nodeJs = "24"
